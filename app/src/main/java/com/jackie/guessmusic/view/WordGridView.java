@@ -5,11 +5,14 @@ import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.GridView;
 
 import com.jackie.guessmusic.R;
+import com.jackie.guessmusic.bean.IWordButtonClickListener;
 import com.jackie.guessmusic.bean.WordButton;
 
 import java.util.List;
@@ -24,6 +27,7 @@ public class WordGridView extends GridView {
 
     private Context mContext;
     private LayoutInflater mInflater;
+    private IWordButtonClickListener mOnWordButtonClickListener;
 
     public static final int COUNT_WORDS = 24;
 
@@ -38,6 +42,7 @@ public class WordGridView extends GridView {
     public WordGridView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
+        this.mContext = context;
         mInflater = LayoutInflater.from(context);
     }
 
@@ -60,17 +65,33 @@ public class WordGridView extends GridView {
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            WordButton holder;
+            final WordButton holder;
             if (convertView == null) {
                 holder = new WordButton();
                 convertView = mInflater.inflate(R.layout.item_gridview, parent, false);
                 holder.setWordButton((Button) convertView);
+                holder.setIndex(position);
                 convertView.setTag(holder);
             } else {
                 holder = (WordButton) convertView.getTag();
             }
 
             holder.getWordButton().setText(mWordButtonList.get(position).getWordText());
+
+            //加载动画
+            Animation mScaleAnimation = AnimationUtils.loadAnimation(mContext, R.anim.scale);
+            mScaleAnimation.setStartOffset(position * 100);  //设置动画延迟时间
+            convertView.startAnimation(mScaleAnimation);
+
+            //相应点击事件
+            holder.getWordButton().setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mOnWordButtonClickListener != null) {
+                        mOnWordButtonClickListener.onWordButtonClick(holder);
+                    }
+                }
+            });
             return convertView;
         }
     }
@@ -80,5 +101,9 @@ public class WordGridView extends GridView {
 
         mWordAdapter = new WordAdapter();
         setAdapter(mWordAdapter);
+    }
+
+    public void setOnWordButtonClickListener(IWordButtonClickListener onWordButtonClickListener) {
+        this.mOnWordButtonClickListener = onWordButtonClickListener;
     }
 }

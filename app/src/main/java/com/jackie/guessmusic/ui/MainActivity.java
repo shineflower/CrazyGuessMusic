@@ -11,15 +11,17 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import com.jackie.guessmusic.R;
+import com.jackie.guessmusic.bean.IWordButtonClickListener;
 import com.jackie.guessmusic.bean.WordButton;
 import com.jackie.guessmusic.view.WordGridView;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends Activity implements View.OnClickListener {
+public class MainActivity extends Activity implements View.OnClickListener, IWordButtonClickListener {
     //唱片相关动画
     private Animation mDiskAnim, mPinInAnim, mPinOutAnim;
     private ImageView mDiskImageView, mPinImageView;
@@ -47,9 +49,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private void initView() {
         mDiskAnim = initAnimation(R.anim.rotate);
         mPinInAnim = initAnimation(R.anim.rotate_pin_in);
-        mPinInAnim.setFillAfter(true);
         mPinOutAnim = initAnimation(R.anim.rotate_pin_out);
-        mPinOutAnim.setFillAfter(true);
 
         mDiskImageView = (ImageView) findViewById(R.id.image_disk);
         mPinImageView = (ImageView) findViewById(R.id.image_pin);
@@ -67,31 +67,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         initSelectedWord();
 
         mWordGridView.updateData(mAllWordList);
-    }
-
-    private void initAllWord() {
-        mAllWordList = new ArrayList<>();
-        for (int i = 0; i < WordGridView.COUNT_WORDS; i++) {
-            WordButton wordButton = new WordButton();
-            wordButton.setWordText("好");
-            mAllWordList.add(wordButton);
-        }
-    }
-
-    private void initSelectedWord() {
-        mSelectedWordList = new ArrayList<>();
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(140, 140);
-        for (int i = 0; i < 4; i++) {
-            Button button = (Button) getLayoutInflater().inflate(R.layout.item_gridview, null);
-            button.setTextColor(Color.WHITE);
-            button.setBackgroundResource(R.drawable.game_word_blank);
-            mWordSelectedContainer.addView(button, params);
-
-            WordButton wordButton = new WordButton();
-            wordButton.setWordButton(button);
-            mSelectedWordList.add(wordButton);
-        }
     }
 
     private void initEvent() {
@@ -147,10 +122,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
         });
 
         mPlayButton.setOnClickListener(this);
+        mWordGridView.setOnWordButtonClickListener(this);
     }
 
-    private Animation initAnimation(int animId) {
-        Animation animation = AnimationUtils.loadAnimation(this, animId);
+    private Animation initAnimation(int resId) {
+        Animation animation = AnimationUtils.loadAnimation(this, resId);
         animation.setInterpolator(new LinearInterpolator());
         return animation;
     }
@@ -170,5 +146,35 @@ public class MainActivity extends Activity implements View.OnClickListener {
             mPlayButton.setVisibility(View.GONE);
             mPinImageView.startAnimation(mPinInAnim);
         }
+    }
+
+    private void initAllWord() {
+        mAllWordList = new ArrayList<>();
+        for (int i = 0; i < WordGridView.COUNT_WORDS; i++) {
+            WordButton wordButton = new WordButton();
+            wordButton.setWordText("好");
+            mAllWordList.add(wordButton);
+        }
+    }
+
+    private void initSelectedWord() {
+        mSelectedWordList = new ArrayList<>();
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(140, 140);
+        for (int i = 0; i < 4; i++) {
+            Button button = (Button) getLayoutInflater().inflate(R.layout.item_gridview, null);
+            button.setTextColor(Color.WHITE);
+            button.setBackgroundResource(R.drawable.game_word_blank);
+            mWordSelectedContainer.addView(button, params);
+
+            WordButton wordButton = new WordButton();
+            wordButton.setWordButton(button);
+            mSelectedWordList.add(wordButton);
+        }
+    }
+
+    @Override
+    public void onWordButtonClick(WordButton wordButton) {
+        Toast.makeText(this, wordButton.getIndex() + "", Toast.LENGTH_SHORT).show();
     }
 }
