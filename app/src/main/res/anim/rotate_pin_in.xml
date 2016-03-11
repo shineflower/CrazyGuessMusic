@@ -7,7 +7,6 @@
         android:duration="300"
         android:pivotX="45%"
         android:pivotY="10%"
-        android:repeatCount="0"
-        android:fillAfter="true"/>
+        android:repeatCount="0"/>
 
 </set>

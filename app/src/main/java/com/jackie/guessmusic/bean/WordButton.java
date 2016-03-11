@@ -8,10 +8,17 @@ import android.widget.Button;
  */
 public class WordButton {
     private int mIndex;
+
     private boolean mIsVisible;
-    private String mWordText;
+
+    private String mWordString;
 
     private Button mWordButton;
+
+    public WordButton() {
+        mIsVisible = true;
+        mWordString = "";
+    }
 
     public int getIndex() {
         return mIndex;
@@ -21,7 +28,7 @@ public class WordButton {
         this.mIndex = index;
     }
 
-    public boolean isIsVisible() {
+    public boolean isVisible() {
         return mIsVisible;
     }
 
@@ -29,12 +36,12 @@ public class WordButton {
         this.mIsVisible = isVisible;
     }
 
-    public String getWordText() {
-        return mWordText;
+    public String getWordString() {
+        return mWordString;
     }
 
-    public void setWordText(String wordText) {
-        this.mWordText = wordText;
+    public void setWordString(String wordString) {
+        this.mWordString = wordString;
     }
 
     public Button getWordButton() {

@@ -15,6 +15,7 @@ import com.jackie.guessmusic.R;
 import com.jackie.guessmusic.bean.IWordButtonClickListener;
 import com.jackie.guessmusic.bean.WordButton;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -67,7 +68,7 @@ public class WordGridView extends GridView {
         public View getView(int position, View convertView, ViewGroup parent) {
             final WordButton holder;
             if (convertView == null) {
-                holder = new WordButton();
+                holder = mWordButtonList.get(position);
                 convertView = mInflater.inflate(R.layout.item_gridview, parent, false);
                 holder.setWordButton((Button) convertView);
                 holder.setIndex(position);
@@ -76,7 +77,7 @@ public class WordGridView extends GridView {
                 holder = (WordButton) convertView.getTag();
             }
 
-            holder.getWordButton().setText(mWordButtonList.get(position).getWordText());
+            holder.getWordButton().setText(holder.getWordString());
 
             //加载动画
             Animation mScaleAnimation = AnimationUtils.loadAnimation(mContext, R.anim.scale);
@@ -99,6 +100,8 @@ public class WordGridView extends GridView {
     public void updateData(List<WordButton> wordButtonList) {
         this.mWordButtonList = wordButtonList;
 
+        //打乱文字顺序
+        Collections.shuffle(mWordButtonList);
         mWordAdapter = new WordAdapter();
         setAdapter(mWordAdapter);
     }

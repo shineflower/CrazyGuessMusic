@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -22,4 +22,10 @@
         <!-- 歌曲名字待选区 -->
         <include layout="@layout/name_selected" />
     </LinearLayout>
-</RelativeLayout>
+
+    <!-- 浮动按钮界面-->
+    <include layout="@layout/float_button" />
+
+    <!--过关界面 -->
+    <include layout="@layout/stage_pass" />
+</FrameLayout>
