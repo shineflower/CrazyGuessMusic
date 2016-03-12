@@ -8,4 +8,11 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="dialog_no_border" parent="@android:style/Theme.DeviceDefault.Light.Dialog">
+        <item name="android:windowIsTranslucent">true</item><!-- 半透明 -->
+        <item name="android:windowBackground">@android:color/transparent</item>  <!-- 模糊 -->
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>  <!-- 无标题 -->
+    </style>
+
 </resources>

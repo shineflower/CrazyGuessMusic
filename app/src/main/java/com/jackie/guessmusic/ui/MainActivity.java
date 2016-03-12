@@ -1,6 +1,7 @@
 package com.jackie.guessmusic.ui;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -12,13 +13,16 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.jackie.guessmusic.R;
+import com.jackie.guessmusic.bean.IAlertDialogClickListener;
 import com.jackie.guessmusic.bean.IWordButtonClickListener;
 import com.jackie.guessmusic.bean.Song;
 import com.jackie.guessmusic.bean.WordButton;
 import com.jackie.guessmusic.data.Constants;
+import com.jackie.guessmusic.utils.DataUtils;
+import com.jackie.guessmusic.utils.DialogUtils;
+import com.jackie.guessmusic.utils.MediaPlayer;
 import com.jackie.guessmusic.view.WordGridView;
 
 import java.io.UnsupportedEncodingException;
@@ -33,6 +37,7 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
     private Animation mDiskAnim, mPinInAnim, mPinOutAnim;
     private ImageView mDiskImageView, mPinImageView;
 
+    private ImageButton mBackButton;
     //播放按钮
     private ImageButton mPlayButton;
     private LinearLayout mWordSelectedContainer;
@@ -65,12 +70,22 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
     /** 答案状态 —— 不完整 */
     private final static int STATUS_ANSWER_LACK = 3;
 
+    /** 对话框类型ID */
+    public static final int ID_ALERT_DIALOG_DELETE = 1;
+    public static final int ID_ALERT_DIALOG_TIP = 2;
+    public static final int ID_ALERT_DIALOG_LACK_COINS = 3;
+
     private final static int SHINE_COUNT = 5;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        //加载数据
+        int[] data = DataUtils.loadData(this);
+        mCurrentStageIndex = data[DataUtils.INDEX_LOAD_DATA_STAGE];
+        mCurrentCoins = data[DataUtils.INDEX_LOAD_DATA_COIN];
 
         initView();
         initData();
@@ -84,8 +99,8 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
         mPinOutAnim = initAnimation(R.anim.rotate_pin_out);
         mPinOutAnim.setFillAfter(true);
 
+        mBackButton = (ImageButton) findViewById(R.id.top_bar_back);
         mCurrentCoinTextView = (TextView) findViewById(R.id.top_bar_text_coin);
-        mCurrentCoinTextView.setText(mCurrentCoins + "");
         mDiskImageView = (ImageView) findViewById(R.id.image_disk);
         mPinImageView = (ImageView) findViewById(R.id.image_pin);
         mPlayButton = (ImageButton) findViewById(R.id.play_start);
@@ -107,6 +122,13 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
 
 
     private void initEvent() {
+        mBackButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+
         mDiskAnim.setAnimationListener(new Animation.AnimationListener() {
             @Override
             public void onAnimationStart(Animation animation) {
@@ -161,22 +183,36 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
         mPlayButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!mIsRunning && mPinImageView != null) {
-                    mIsRunning = true;
-                    mPlayButton.setVisibility(View.GONE);
-                    mPinImageView.startAnimation(mPinInAnim);
-                }
+                handlePlayButton();
             }
         });
+
         mWordGridView.setOnWordButtonClickListener(this);
     }
 
+    //处理圆盘中间的播放按钮，播放音乐
+    private void handlePlayButton() {
+            if (!mIsRunning && mPinImageView != null) {
+                mIsRunning = true;
+                mPlayButton.setVisibility(View.GONE);
+                mPinImageView.startAnimation(mPinInAnim);
+
+                MediaPlayer.playSong(MainActivity.this, mCurrentSong.getFileName());
+            }
+    }
+
+    /**
+     * 加载当前关的数据
+     */
     private void initCurrentStageData() {
         //读取当前关的歌曲信息
         mCurrentSong = loadCurrentStageSong(mCurrentStageIndex++);
 
         //初始化已选择文字框
         mSelectedWordList = initSelectedWord();
+
+        //清空答案
+        mWordSelectedContainer.removeAllViews();
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(140, 140);
         for (int i = 0; i < mSelectedWordList.size(); i++) {
@@ -186,6 +222,16 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
         //初始化待选文字框
         mAllWordList = initAllWord();
         mWordGridView.updateData(mAllWordList);
+
+        //设置当前关
+        TextView currentLevelTextView = (TextView) findViewById(R.id.current_level);
+        currentLevelTextView.setText(mCurrentStageIndex + "");
+
+        //设置当前金币
+        mCurrentCoinTextView.setText(mCurrentCoins + "");
+
+        // 处理音乐播放事件
+        handlePlayButton();
     }
 
     private List<WordButton> initSelectedWord() {
@@ -294,7 +340,7 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
                 mSelectedWordList.get(i).getWordButton().setTextColor(Color.WHITE);
             }
         } else if (checkResult == STATUS_ANSWER_RIGHT) {
-            //通关并获得奖励
+            //过关并获得奖励
             handlePassEvent();
         } else if (checkResult == STATUS_ANSWER_WRONG) {
             //闪烁提示用户
@@ -374,9 +420,54 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
     }
 
     private void handlePassEvent() {
-//        LinearLayout passLayout = (LinearLayout) findViewById(R.id.pass_view);
-//        passLayout.setVisibility(View.VISIBLE);
-        Toast.makeText(this, "过关", Toast.LENGTH_SHORT).show();
+        final LinearLayout passLayout = (LinearLayout) findViewById(R.id.pass_view);
+        passLayout.setVisibility(View.VISIBLE);
+
+        //停止未完成的动画
+        mDiskImageView.clearAnimation();
+
+        //停止正在播放的音乐
+        MediaPlayer.stop();
+
+        //播放音效
+        MediaPlayer.playTone(this, MediaPlayer.TONE_INDEX_COIN);
+
+        mCurrentCoins += 3;
+        //保存数据
+        DataUtils.saveData(MainActivity.this, mCurrentStageIndex, mCurrentCoins);
+
+        TextView passLevelTextView = (TextView) findViewById(R.id.pass_level);
+        passLevelTextView.setText(mCurrentStageIndex + "");
+
+        TextView passSongNameTextView = (TextView) findViewById(R.id.stage_song_name);
+        passSongNameTextView.setText(mCurrentSong.getSongName());
+
+        //下一题
+        ImageButton nextStageButton = (ImageButton) findViewById(R.id.next_stage);
+        nextStageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isAppPassed()) {
+                    //通关
+
+                    //通关后，将当前关和金币重置
+                    DataUtils.saveData(MainActivity.this, 0, Constants.TOTAL_COINS);
+
+                    Intent intent = new Intent(MainActivity.this, AppPassActivity.class);
+                    startActivity(intent);
+                    finish();
+                } else {
+                    //过关
+                    passLayout.setVisibility(View.GONE);
+                    //加载关卡数据
+                    initCurrentStageData();
+                }
+            }
+        });
+    }
+
+    private boolean isAppPassed() {
+        return mCurrentStageIndex == Constants.SONG_INFO.length;
     }
 
     private void handleDeleteWord() {
@@ -385,19 +476,25 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
 
             @Override
             public void onClick(View arg0) {
-                deleteOneWord();
+                showConfirmAlertDialog(ID_ALERT_DIALOG_DELETE);
             }
         });
     }
 
     private void handleTipAnswer() {
-
+        ImageButton tipButton = (ImageButton) findViewById(R.id.tip_word);
+        tipButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showConfirmAlertDialog(ID_ALERT_DIALOG_TIP);
+            }
+        });
     }
 
     private void deleteOneWord() {
         //金币不够
         if (!handleCoins(-getDeleteWordCoins())) {
-            Toast.makeText(this, "金币不够", Toast.LENGTH_SHORT).show();
+            showConfirmAlertDialog(ID_ALERT_DIALOG_LACK_COINS);
             return;
         } else {
             // 将这个索引对应的WordButton设置为不可见
@@ -405,6 +502,33 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
             if (WordGridView.COUNT_WORDS - mCurrentSong.getNameLength() > mCanDeleteWordCount) {
                 setWordButtonVisible(findNotAnswerWord(), View.INVISIBLE);
             }
+        }
+    }
+
+    private void tipAnswer() {
+        boolean tipWord = false;
+        //自动选择一个答案
+        for (int i = 0; i < mSelectedWordList.size(); i++) {
+            if (mSelectedWordList.get(i).getWordString().length() == 0) {
+                // 根据当前的答案框条件选择对应的文字并填入
+                onWordButtonClick(findAnswerWord(i));
+
+                tipWord = true;
+
+                //减少金币
+                if (!handleCoins(-getTipCoins())) {
+                    showConfirmAlertDialog(ID_ALERT_DIALOG_LACK_COINS);
+                    return;
+                }
+
+                break;
+            }
+        }
+
+        // 没有找到可以填充的答案
+        if (!tipWord) {
+            // 闪烁文字提示用户
+            shiningWords();
         }
     }
 
@@ -464,6 +588,26 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
     }
 
     /**
+     * 找到一个答案文字
+     *
+     * @param index 当前需要填入答案框的索引
+     * @return
+     */
+    private WordButton findAnswerWord(int index) {
+        WordButton wordButton;
+
+        for (int i = 0; i < WordGridView.COUNT_WORDS; i++) {
+            wordButton = mAllWordList.get(i);
+
+            if (wordButton.getWordString().equals("" + mCurrentSong.getNameCharacters()[index])) {
+                return wordButton;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * 判断某个文字是不是答案
      * @param wordButton
      * @return
@@ -479,5 +623,51 @@ public class MainActivity extends Activity implements IWordButtonClickListener {
         }
 
         return result;
+    }
+
+    /**
+     * 显示对话框方法
+     *
+     * @param id
+     */
+    public void showConfirmAlertDialog(int id) {
+        switch (id) {
+            case ID_ALERT_DIALOG_DELETE:
+                // 删除
+                DialogUtils.showDialog(this, "是否花费" + getDeleteWordCoins() + "金币删除一个错误答案?", new IAlertDialogClickListener() {
+                    @Override
+                    public void onClick() {
+                        deleteOneWord();
+                    }
+                });
+                break;
+            case ID_ALERT_DIALOG_TIP:
+                // 提示
+                DialogUtils.showDialog(this, "是否花费" + getTipCoins() + "金币得到一个正确答案?", new IAlertDialogClickListener() {
+                    @Override
+                    public void onClick() {
+                        tipAnswer();
+                    }
+                });
+                break;
+            case ID_ALERT_DIALOG_LACK_COINS:
+                // 金币不足
+                DialogUtils.showDialog(this, "金币不足,是否进入商城充值?", new IAlertDialogClickListener() {
+                    @Override
+                    public void onClick() {
+
+                    }
+                });
+                break;
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        mDiskImageView.clearAnimation();
+
+        MediaPlayer.stop();
+
+        super.onPause();
     }
 }
